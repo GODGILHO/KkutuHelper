@@ -22,7 +22,7 @@ class DB:
             checker = [re.compile('{}.*'.format(start_char[0])), re.compile('{}.*'.format(start_char[1]))]
         current = ''
         for value in self.clear_data:
-            if value in exception_list:
+            if value.rstrip() in exception_list:
                 continue
             if checker[0].match(value):
                 if current == '':
