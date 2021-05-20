@@ -1,7 +1,7 @@
 {
   "enabled_auto": true,
   "auto_config": {
-    "key_delay": [100, 400],
+    "key_delay": [10, 40],
     "return_delay": [50, 150]
   },
   "auto_exception": true
