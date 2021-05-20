@@ -126,7 +126,7 @@ while True:
         if twoum_rule.match(first_char.text):
             search_txt = [list(first_char.text)[0], list(first_char.text)[2]]
         word = longdb.get_longest_of(search_txt, word_exceptions)
-        if word == '':
+        if not word:
             word = db.get_longest_of(search_txt, word_exceptions)
         if config['enabled_auto']:
             if not running and word is not False:
