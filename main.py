@@ -1,12 +1,21 @@
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+from selenium.webdriver.common.keys import Keys
 import word_db
 import re
+from random import randint
+import threading
+from threading import Thread
+from json import load
+from time import sleep
 
 down_url = 'https://chromedriver.chromium.org/downloads'
 
 longdb = word_db.DB('resources\\kklong.txt')
 db = word_db.DB('resources\\kkutu.txt')
+
+with open('config.json', 'r') as f:
+    config = load(f)
 
 driver = webdriver.Chrome('resources\\chromedriver.exe')
 driver.get('https://kkutu.co.kr/')
@@ -29,6 +38,33 @@ addr_first_char = '//*[@id="GameBox"]/div/div[1]/div[6]/div/div[1]'
 first_char = driver.find_element_by_xpath(addr_first_char)
 print('FirstChar hooked - {}'.format(addr_first_char))
 
+word = ''
+word_exceptions = []
+perma_word_exceptions = []
+
+
+class Worker(Thread):
+    def run(self):
+        if inputbox.get_attribute('style') != 'display: block;':
+            return
+
+        if word != '':
+            return
+
+        for i in list(word):
+            inputbox.send_keys(i)
+            sleep(randint(config['auto_config']['key_delay'][0], config['auto_config']['key_delay'][1]))
+        inputbox.send_keys(Keys.RETURN)
+        sleep(0.1)
+
+        if config['auto_exception']:
+            return
+
+        if inputbox.get_attribute('style') == 'display: block;':
+            word_exceptions.append(word)
+            perma_word_exceptions.append(word)
+
+
 print('start game')
 while inputbox.get_attribute('style') != 'display: block;':
     continue
@@ -39,9 +75,9 @@ print('word history hooked - {}'.format(addr_word_history))
 addr_latest_word = '//*[@id="GameBox"]/div/div[1]/div[9]/div/div[1]'
 print('latest word hooked - {}'.format(addr_latest_word))
 
-word_exceptions = []
 twoum_rule = re.compile('.\(.\)')
 str_in_html = re.compile('>[가-힣]*<')
+worker = Worker(name='worker')
 
 while True:
     try:
@@ -52,8 +88,10 @@ while True:
         latest_word = None
     if word_history.text == '':  # restarted
         if word_exceptions:
-            print('exception cleared')
+            print('exception initialized')
         word_exceptions = []
+        for i in perma_word_exceptions:
+            word_exceptions.append(i)
     else:
         if latest_word is not None:
             try:
@@ -70,4 +108,6 @@ while True:
         word = longdb.get_longest_of(search_txt, word_exceptions)
         if word == '':
             word = db.get_longest_of(search_txt, word_exceptions)
+        if 'worker' not in [th.name for th in threading.enumerate()]:
+            worker.start()
         driver.execute_script('$("#AABox").html("<h5 class=\'product-title\'>{}</h5>")'.format(word))
