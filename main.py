@@ -129,7 +129,7 @@ while True:
         if word == '':
             word = db.get_longest_of(search_txt, word_exceptions)
         if config['enabled_auto']:
-            if not running:
+            if not running and word is not False:
                 running = True
                 print('new instance of worker')
                 worker = Worker(name='worker')
