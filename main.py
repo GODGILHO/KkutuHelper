@@ -4,7 +4,6 @@ from selenium.webdriver.common.keys import Keys
 import word_db
 import re
 from random import randint
-import threading
 from threading import Thread
 from json import load
 from time import sleep
@@ -14,7 +13,7 @@ down_url = 'https://chromedriver.chromium.org/downloads'
 longdb = word_db.DB('resources\\kklong.txt')
 db = word_db.DB('resources\\kkutu.txt')
 
-with open('config.json', 'r') as f:
+with open('resources\\config.json', 'r') as f:
     config = load(f)
 
 driver = webdriver.Chrome('resources\\chromedriver.exe')
@@ -38,31 +37,53 @@ addr_first_char = '//*[@id="GameBox"]/div/div[1]/div[6]/div/div[1]'
 first_char = driver.find_element_by_xpath(addr_first_char)
 print('FirstChar hooked - {}'.format(addr_first_char))
 
+addr_chat = '//*[@id="ChatBox"]/div[1]/input[1]'
+chat = driver.find_element_by_xpath(addr_chat)
+print('ChatBox hooked - {}'.format(addr_chat))
+
 word = ''
 word_exceptions = []
 perma_word_exceptions = []
 
+print('Declaring worker')
+running = False
+
 
 class Worker(Thread):
     def run(self):
+        global running, word_exceptions, perma_word_exceptions
         if inputbox.get_attribute('style') != 'display: block;':
+            running = False
+            print('worker end')
             return
 
-        if word != '':
+        if word == '':
+            running = False
+            print('worker end because of blank word')
             return
 
         for i in list(word):
-            inputbox.send_keys(i)
-            sleep(randint(config['auto_config']['key_delay'][0], config['auto_config']['key_delay'][1]))
-        inputbox.send_keys(Keys.RETURN)
+            sleep(randint(config['auto_config']['key_delay'][0], config['auto_config']['key_delay'][1]) / 1000)
+            chat.send_keys(i)
+
+        sleep(randint(config['auto_config']['return_delay'][0], config['auto_config']['return_delay'][0]) / 1000)
+        chat.send_keys(Keys.RETURN)
         sleep(0.1)
 
-        if config['auto_exception']:
+        if not config['auto_exception']:
+            running = False
+            print('worker end because of auto exception')
             return
 
         if inputbox.get_attribute('style') == 'display: block;':
+            print('added permanent exception {}'.format(word))
             word_exceptions.append(word)
             perma_word_exceptions.append(word)
+        else:
+            print('passing exception')
+
+        running = False
+        print('worker done.')
 
 
 print('start game')
@@ -77,7 +98,6 @@ print('latest word hooked - {}'.format(addr_latest_word))
 
 twoum_rule = re.compile('.\(.\)')
 str_in_html = re.compile('>[가-힣]*<')
-worker = Worker(name='worker')
 
 while True:
     try:
@@ -87,7 +107,7 @@ while True:
     except StaleElementReferenceException:
         latest_word = None
     if word_history.text == '':  # restarted
-        if word_exceptions:
+        if word_exceptions or word_exceptions == perma_word_exceptions:
             print('exception initialized')
         word_exceptions = []
         for i in perma_word_exceptions:
@@ -104,10 +124,15 @@ while True:
     if inputbox.get_attribute('style') == 'display: block;':
         search_txt = first_char.text
         if twoum_rule.match(first_char.text):
-            search_txt = [first_char.text[0], first_char.text[2]]
+            search_txt = [list(first_char.text)[0], list(first_char.text)[2]]
         word = longdb.get_longest_of(search_txt, word_exceptions)
         if word == '':
             word = db.get_longest_of(search_txt, word_exceptions)
-        if 'worker' not in [th.name for th in threading.enumerate()]:
-            worker.start()
+        if config['enabled_auto']:
+            if not running:
+                running = True
+                print('new instance of worker')
+                worker = Worker(name='worker')
+                print('starting new worker')
+                worker.start()
         driver.execute_script('$("#AABox").html("<h5 class=\'product-title\'>{}</h5>")'.format(word))
