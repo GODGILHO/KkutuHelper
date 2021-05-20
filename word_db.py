@@ -37,4 +37,6 @@ class DB:
                     else:
                         if len(value) > len(current):
                             current = value
+        if current == '':
+            return False
         return current.rstrip()
