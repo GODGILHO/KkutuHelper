@@ -56,8 +56,11 @@ while True:
         word_exceptions = []
     else:
         if latest_word is not None:
-            txt = str_in_html.findall(latest_word.get_attribute('outerHTML'))[0][1:-1]
-            if txt not in word_exceptions:
+            try:
+                txt = str_in_html.findall(latest_word.get_attribute('outerHTML'))[0][1:-1]
+            except StaleElementReferenceException:
+                txt = ''
+            if txt not in word_exceptions and txt != '':
                 print('exception added: {}'.format(txt))
                 word_exceptions.append(txt)
     if inputbox.get_attribute('style') == 'display: block;':
@@ -68,4 +71,3 @@ while True:
         if word == '':
             word = db.get_longest_of(search_txt, word_exceptions)
         driver.execute_script('$("#AABox").html("<h5 class=\'product-title\'>{}</h5>")'.format(word))
-
