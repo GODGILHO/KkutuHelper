@@ -57,7 +57,7 @@ class Worker(Thread):
             print('worker end')
             return
 
-        if word == '':
+        if not word:
             running = False
             print('worker end because of blank word')
             return
